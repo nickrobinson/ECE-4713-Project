@@ -1,6 +1,11 @@
 #include<iostream>
 using namespace std;
 
+//Global Variables
+int DATA_MEMORY[512];
+int INST_MEMORY[100][16];
+int REG_ARRAY[8];
+
 typedef enum OPCODE
 { 
 	NOP,
