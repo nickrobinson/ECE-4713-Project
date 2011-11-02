@@ -1,8 +1,6 @@
 #include<iostream>
 using namespace std;
 
-void fetch();
-
 typedef enum OPCODE
 { 
 	NOP,
@@ -46,24 +44,6 @@ struct J_Instruction
 	int Address;		// The address that should be jumped to
 }
 
-//Structure for the IF/ID buffer
-struct IF_ID_Buffer
-{
-	int instruction[16];
-}
-
-struct ID_EX_Buffer
-{
-	bool WriteBack;
-	bool MemAccess;
-	bool EX;
-	int registerRD;
-	int registerRT;
-	int registerRS;
-	int currentPC;
-	//32 for sign extended inst
-
-}
 
 int main()
 {
@@ -75,28 +55,18 @@ int main()
 	int opCode = 0;
 	int functCode = 0;
 
+
 	//setup
 		//init global clock
 		//allocate mem for registers/memory/buffers
-	
+
 	//main while loop
-	while(true)
-	{
 		//maintain clock
 		//execute each portion at least once
-		fetch();
-	}
+		
+
 
 	//cleanup?
 
 	return 0;
-}
-
-void fetch()
-{
-	//read in instruction
-	//get opcode
-	//switch for i/j/r type instructions
-	
-
 }
