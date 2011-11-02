@@ -31,7 +31,7 @@ struct R_Instruction
 	int RT;				
 	int RD;				
 	int functionCode;	//The function code used for logical or arith opcode
-}
+};
 
 //Structure for Immediate type instructions
 struct I_Instruction
@@ -40,14 +40,14 @@ struct I_Instruction
 	int RS;
 	int RT;
 	int immediate;		//
-}
+};
 
 //Structure for Jump type instructions
 struct J_Instruction
 {
 	int opCode;
 	int Address;		// The address that should be jumped to
-}
+};
 
 
 int main()
@@ -100,7 +100,7 @@ int main()
 	REG_ARRAY[6] = 0x0005;
 	REG_ARRAY[7] = 0x0000;	//Zero Register
 
-
+	return 0;
 
 	//setup
 		//init global clock
@@ -115,6 +115,4 @@ int main()
 
 
 	//cleanup?
-
-	return 0;
 }
