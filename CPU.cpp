@@ -59,6 +59,8 @@ int main()
 	//setup
 		//init global clock
 		//allocate mem for registers/memory/buffers
+		//Initialize Memory
+		//Initialize Regs
 
 	//main while loop
 		//maintain clock
