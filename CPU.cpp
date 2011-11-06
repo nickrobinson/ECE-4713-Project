@@ -7,7 +7,7 @@ int INSTRUCTION_MEMORY[100][16];
 int REG_ARRAY[8];
 
 typedef enum OPCODE
-{ 
+{
 	NOP,
 	ARITHEMATIC,
 	LOAD,
@@ -50,6 +50,24 @@ struct J_Instruction
 };
 
 
+struct ControlOut
+{
+	bool regDest;
+	bool branch;
+	bool memRead;
+	bool memToReg;
+	bool memWrite;
+	int aluOP[2];
+	bool aluSRC;
+	bool regWrite;
+}
+
+ControlOut ControlUnit()
+{
+
+
+}
+
 int main()
 {
 	int cpuClock = 0;
@@ -83,6 +101,10 @@ int main()
 		REG_ARRAY[counter] = 0;
 	}
 	
+
+	//setup
+	//allocate mem for registers/memory/buffers
+
 	//Initialize data memory
 	DATA_MEMORY[0x0010] = 0x0101;
 	DATA_MEMORY[0x0012] = 0x0110;
@@ -102,12 +124,9 @@ int main()
 
 	return 0;
 
-	//setup
-		//init global clock
-		//allocate mem for registers/memory/buffers
-		//Initialize Memory
-		//Initialize Regs
-
+	
+	//init global clock
+	
 	//main while loop
 		//maintain clock
 		//execute each portion at least once
