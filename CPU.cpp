@@ -39,29 +39,31 @@ struct I_Instruction
 	int opCode;
 	int RS;
 	int RT;
-	int immediate;		//
+	int immediateValue;		//
 };
 
 //Structure for Jump type instructions
 struct J_Instruction
 {
 	int opCode;
-	int Address;		// The address that should be jumped to
+	int jumpAddress;		// The address that should be jumped to
 };
 
 
 struct ControlOut
 {
-	bool regDest;
 	bool branch;
+	bool regDest;
+	bool regWrite;
 	bool memRead;
 	bool memToReg;
 	bool memWrite;
-	int aluOP[2];
 	bool aluSRC;
-	bool regWrite;
+	int aluOP[2];
 }
 
+//Function for analyzing opcode
+//returns struct with status of each control line
 ControlOut ControlUnit()
 {
 
@@ -71,12 +73,6 @@ ControlOut ControlUnit()
 int main()
 {
 	int cpuClock = 0;
-	int jumpAddress = 0;
-	int rsLocation = 0;
-	int rtLocation = 0;
-	int rdLocation = 0;
-	int opCode = 0;
-	int functCode = 0;
 	
 	int counter;
 	
