@@ -1,10 +1,15 @@
 #include<iostream>
+#include<string>
 using namespace std;
+
+//Function definitions
+void fetch();
 
 //Global Variables
 int DATA_MEMORY[100];
-int INSTRUCTION_MEMORY[100][16];
+string INSTRUCTION_MEMORY[100];
 int REG_ARRAY[8];
+int PC = 0x01;
 
 typedef enum OPCODE
 { 
@@ -49,6 +54,25 @@ struct J_Instruction
 	int Address;		// The address that should be jumped to
 };
 
+//Structure for the IF/ID buffer
+struct IF_ID_Buffer
+{
+	string instruction;
+}
+
+struct ID_EX_Buffer
+{
+	bool WriteBack;
+	bool MemAccess;
+	bool EX;
+	int registerRD;
+	int registerRT;
+	int registerRS;
+	int currentPC;
+	//32 for sign extended inst
+
+}
+
 
 int main()
 {
@@ -65,10 +89,7 @@ int main()
 	//Wipe Instruction Memory
 	for (counter = 0; counter < 100; counter++)
 	{
-		for(int i=0; i<16; i++)
-		{
-			INSTRUCTION_MEMORY[counter][i] = 0;
-		}
+		INSTRUCTION_MEMORY[counter] = "";
 	}
 	
 	//Wipe instruction memory
@@ -100,19 +121,29 @@ int main()
 	REG_ARRAY[6] = 0x0005;
 	REG_ARRAY[7] = 0x0000;	//Zero Register
 
-	return 0;
-
 	//setup
 		//init global clock
 		//allocate mem for registers/memory/buffers
-		//Initialize Memory
-		//Initialize Regs
-
+	
 	//main while loop
+	while(true)
+	{
 		//maintain clock
 		//execute each portion at least once
-		
-
+		fetch();
+	}
 
 	//cleanup?
+
+	return 0;
+}
+
+void fetch()
+{
+	//read in instruction
+	//get opcode
+	//switch for i/j/r type instructions
+	
+	IF_ID_Buffer.instruction = INSTRUCTION_MEMORY[PC]
+
 }
