@@ -87,7 +87,6 @@ struct ID_EX_Buffer
 	int registerRS;
 	int regOut1;
 	int regOut2;
-	
 	int signExtendedVal;
 	int currentPC;
 	string functionCode;
@@ -103,7 +102,7 @@ ID_EX_Buffer DECODE_EX;
 
 //Function for analyzing opcode
 //returns struct with status of each control line
-void ControlUnit(string inputInstruction, ID_EX_Buffer);
+void ControlUnit(string inputInstruction, ControlOut&);
 
 int main()
 {
@@ -154,6 +153,8 @@ int main()
 	INST_MEMORY[0] = "0111111110000000";//sgti $7,$6,0
 	INST_MEMORY[1] = "1110111001001100";//go to ENDLOOP bez $7, 7	
 
+	system("pause");
+	return 0;
 
 	
 	//init global clock
@@ -173,20 +174,15 @@ int main()
 
 	//cleanup?
 
-	return 0;
 }
 
 
 //Function for analyzing opcode
 //returns struct with status of each control line
-void ControlUnit(string inputInstruction, ID_EX_Buffer)
+void ControlUnit(string inputOpCode, ControlOut& inputStruct)
 {
 	ControlOut tempControlOut = {false, false, false, false, false, false, false, {0,0}};
 	
-	string opCode;
-	opCode.assign(inputInstruction.begin(), inputInstruction.begin()+4);
-
-	//init opint
 	int OPint = -1;
 	//create array with all possible string-based opcodes
 	string possibleOps[12] = {"0000", "0001", "0010", "0011", "0100", "0101", 
@@ -196,9 +192,10 @@ void ControlUnit(string inputInstruction, ID_EX_Buffer)
 	//i will correspond to ennumerated list of functions
 	for(int i = 0; i < 13; i++)
 	{
-		if(opCode == possibleOps[i])
+		if(inputOpCode.compare(possibleOps[i]) == 0)
 		{
 			OPint = i;
+			break;
 		}
 	}
 
@@ -208,26 +205,125 @@ void ControlUnit(string inputInstruction, ID_EX_Buffer)
 		case NOP:
 			break;
 		case ARITHEMATIC:
+			tempControlOut.aluOP[0] = 0;
+			tempControlOut.aluOP[1] = 1;
+			tempControlOut.aluSRC = 0;
+			tempControlOut.branch = 0;
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 1;
+			tempControlOut.regWrite = 1;
 			break;
 		case LOAD:
+			tempControlOut.aluOP[0] = 0;
+			tempControlOut.aluOP[1] = 0;
+			tempControlOut.aluSRC = 1;
+			tempControlOut.branch = 0;
+			tempControlOut.memRead = 1;
+			tempControlOut.memToReg = 1;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 0;
+			tempControlOut.regWrite = 1;
 			break;
 		case STORE:
+			tempControlOut.aluOP[0] = 0;
+			tempControlOut.aluOP[1] = 0;
+			tempControlOut.aluSRC = 1;
+			tempControlOut.branch = 0;
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;	//Don't care
+			tempControlOut.memWrite = 1;
+			tempControlOut.regDest = 0;		//Don't care
+			tempControlOut.regWrite = 0;
 			break;
 		case LOGICAL:
+			tempControlOut.aluOP[0] = 
+			tempControlOut.aluOP[1] = 
+			tempControlOut.aluSRC = 
+			tempControlOut.branch = 0;
+			tempControlOut.memRead = 
+			tempControlOut.memToReg = 
+			tempControlOut.memWrite = 
+			tempControlOut.regDest = 
+			tempControlOut.regWrite = 
 			break;
 		case ShiftLeft:
+			tempControlOut.aluOP[0] = 
+			tempControlOut.aluOP[1] = 
+			tempControlOut.aluSRC = 
+			tempControlOut.branch = 0;
+			tempControlOut.memRead = 
+			tempControlOut.memToReg = 
+			tempControlOut.memWrite = 
+			tempControlOut.regDest = 
+			tempControlOut.regWrite = 
 			break;
 		case ShiftRight:
+			tempControlOut.aluOP[0] = 
+			tempControlOut.aluOP[1] = 
+			tempControlOut.aluSRC = 
+			tempControlOut.branch = 0;
+			tempControlOut.memRead = 
+			tempControlOut.memToReg = 
+			tempControlOut.memWrite = 
+			tempControlOut.regDest = 
+			tempControlOut.regWrite = 
 			break;
 		case BranchIfEqual:
+			tempControlOut.aluOP[0] = 
+			tempControlOut.aluOP[1] = 
+			tempControlOut.aluSRC = 
+			tempControlOut.branch = 1;
+			tempControlOut.memRead = 
+			tempControlOut.memToReg = 
+			tempControlOut.memWrite = 
+			tempControlOut.regDest = 
+			tempControlOut.regWrite = 
 			break;
 		case BranchIfLessThan:
+			tempControlOut.aluOP[0] = 
+			tempControlOut.aluOP[1] = 
+			tempControlOut.aluSRC = 
+			tempControlOut.branch = 
+			tempControlOut.memRead = 
+			tempControlOut.memToReg = 
+			tempControlOut.memWrite = 
+			tempControlOut.regDest = 
+			tempControlOut.regWrite = 
 			break;
 		case Jump:
+			tempControlOut.aluOP[0] = 
+			tempControlOut.aluOP[1] = 
+			tempControlOut.aluSRC = 
+			tempControlOut.branch = 
+			tempControlOut.memRead = 
+			tempControlOut.memToReg = 
+			tempControlOut.memWrite = 
+			tempControlOut.regDest = 
+			tempControlOut.regWrite = 
 			break;
 		case AddIm:
+			tempControlOut.aluOP[0] = 
+			tempControlOut.aluOP[1] = 
+			tempControlOut.aluSRC = 
+			tempControlOut.branch = 
+			tempControlOut.memRead = 
+			tempControlOut.memToReg = 
+			tempControlOut.memWrite = 
+			tempControlOut.regDest = 
+			tempControlOut.regWrite = 
 			break;
 		case SubIm:
+			tempControlOut.aluOP[0] = 
+			tempControlOut.aluOP[1] = 
+			tempControlOut.aluSRC = 
+			tempControlOut.branch = 
+			tempControlOut.memRead = 
+			tempControlOut.memToReg = 
+			tempControlOut.memWrite = 
+			tempControlOut.regDest = 
+			tempControlOut.regWrite = 
 			break;
 		default:
 			//no opcode was found
@@ -303,8 +399,7 @@ void fetch()
 
 void decode()
 {
-
-bool WriteBack;
+	bool WriteBack;
 	bool MemAccess;
 	bool EX;
 	int registerRD;
@@ -370,7 +465,4 @@ bool WriteBack;
 	DECODE_EX.opCode = FETCH_DECODE.instruction.substr(0,4);
 	
 	//Call the control unit here
-
-	
-	
 }
