@@ -5,12 +5,14 @@ using namespace std;
 //Function definitions
 void fetch();
 void decode();
+int funcALU();
 
 //Global Variables
 int DATA_MEMORY[100];
 string INSTRUCTION_MEMORY[100];
 int REG_ARRAY[8];
-int PC = 0x01;
+int PC = 0x00;
+int ALU_Zero = 0;
 
 typedef enum OPCODE
 { 
@@ -85,9 +87,11 @@ struct ID_EX_Buffer
 	int registerRS;
 	int regOut1;
 	int regOut2;
+	
 	int signExtendedVal;
 	int currentPC;
 	string functionCode;
+	string opCode;
 	ControlOut controlBits;
 	//32 for sign extended inst
 
@@ -146,10 +150,10 @@ int main()
 	REG_ARRAY[6] = 0x0005;
 	REG_ARRAY[7] = 0x0000;	//Zero Register
 
+	//Initialize Instruction memory for testing purposes
+	INST_MEMORY[0] = "0111111110000000";//sgti $7,$6,0
+	INST_MEMORY[1] = "1110111001001100";//go to ENDLOOP bez $7, 7	
 
-
-	system("pause");
-	return 0;
 
 	
 	//init global clock
@@ -169,6 +173,7 @@ int main()
 
 	//cleanup?
 
+	return 0;
 }
 
 
@@ -230,6 +235,57 @@ void ControlUnit(string inputInstruction, ID_EX_Buffer)
 			break;
 	}
 	//The comments. They are everywhere.  Why not here?
+}
+
+//ALU Function accept 3-bit function code and inputs A & B
+//then perform the correct operation.
+int funcALU (int ALU_OP, int ALU_A, int ALU_B) {
+	int ALU_Result = 0;
+	
+	switch (ALU_OP) {
+		case 0: //addition
+			ALU_Result = ALU_A + ALU_B;
+			break;
+
+		case 1: //and
+			ALU_Result = ALU_A & ALU_B;
+			break;
+
+		case 2: //or
+			ALU_Result = ALU_A | ALU_B;
+			break;
+			
+		case 3: //Nor
+			ALU_Result = ~(ALU_A | ALU_B);
+			break;
+		
+		case 4: //set greater than
+			if (ALU_A > ALU_B) 
+				ALU_Result = 1;
+			else
+				ALU_Result = 0;
+			break;
+			
+		case 5: //set on less than
+			if (ALU_A < ALU_B){
+				ALU_Result = 1;
+				ALU_Zero = 1;
+			}
+			else{
+				ALU_Result = 0;
+				ALU_Zero = 0;
+			}
+			break;
+			
+		case 6: //subtract
+			ALU_Result = ALU_A - ALU_B;
+			if (ALU_Result == 0)
+				ALU_Zero = 1;
+			else ALU_Zero = 0;
+			break;
+	}
+	
+	return ALU_Result;
 }
 
 void fetch()
