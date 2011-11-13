@@ -67,7 +67,7 @@ struct ControlOut
 	bool memToReg;
 	bool memWrite;
 	bool aluSRC;
-	int aluOP[2];
+	int aluOP[2]; //May have to increase this to 3 as we may need larger op code for immediate commands (NLR 11/9)
 };
 
 //Structure for the IF/ID buffer
@@ -150,12 +150,11 @@ int main()
 	REG_ARRAY[7] = 0x0000;	//Zero Register
 
 	//Initialize Instruction memory for testing purposes
-	INST_MEMORY[0] = "0111111110000000";//sgti $7,$6,0
-	INST_MEMORY[1] = "1110111001001100";//go to ENDLOOP bez $7, 7	
+	INSTRUCTION_MEMORY[0] = "0111111110000000";//sgti $7,$6,0
+	INSTRUCTION_MEMORY[1] = "1110111001001100";//go to ENDLOOP bez $7, 7	
 
-	system("pause");
-	return 0;
-
+	fetch();
+	decode();
 	
 	//init global clock
 
@@ -165,12 +164,12 @@ int main()
 
 	
 	//main while loop
-	while(true)
+	/*while(true)
 	{
 		//maintain clock
 		//execute each portion at least once
 		fetch();
-	}
+	}*/
 
 	//cleanup?
 
@@ -179,7 +178,7 @@ int main()
 
 //Function for analyzing opcode
 //returns struct with status of each control line
-void ControlUnit(string inputOpCode, ControlOut& inputStruct)
+/*void ControlUnit(string inputOpCode, ControlOut& inputStruct)
 {
 	ControlOut tempControlOut = {false, false, false, false, false, false, false, {0,0}};
 	
@@ -331,11 +330,11 @@ void ControlUnit(string inputOpCode, ControlOut& inputStruct)
 			break;
 	}
 	//The comments. They are everywhere.  Why not here?
-}
+}*/
 
-//ALU Function accept 3-bit function code and inputs A & B
+//ALU Function accept 3-bit function code, 2-bit OP-code, and inputs A & B
 //then perform the correct operation.
-int funcALU (int ALU_OP, int ALU_A, int ALU_B) {
+int funcALU (int ALU_FUNC_CODE, int ALU_OP, int ALU_A, int ALU_B) {
 	int ALU_Result = 0;
 	
 	switch (ALU_OP) {
@@ -375,9 +374,11 @@ int funcALU (int ALU_OP, int ALU_A, int ALU_B) {
 			
 		case 6: //subtract
 			ALU_Result = ALU_A - ALU_B;
-			if (ALU_Result == 0)
+			if (ALU_Result == 0){
 				ALU_Zero = 1;
-			else ALU_Zero = 0;
+			}
+			else 
+				ALU_Zero = 0;
 			break;
 	}
 	
@@ -460,6 +461,10 @@ void decode()
 	
 	//Update PC value
 	DECODE_EX.currentPC = FETCH_DECODE.PC;
+	
+#ifdef DEBUG
+	cout << "CURRENT PC: " << DECODE_EX.currentPC << endl;
+#endif
 	
 	//Get the opcode and call the control unit
 	DECODE_EX.opCode = FETCH_DECODE.instruction.substr(0,4);
