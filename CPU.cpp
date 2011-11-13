@@ -70,7 +70,8 @@ struct ControlOut
 	bool memToReg;
 	bool memWrite;
 	bool aluSRC;
-	int aluOP[2]; //May have to increase this to 3 as we may need larger op code for immediate commands (NLR 11/9)
+	bool jump;
+	int aluOP[2];
 };
 
 //Structure for the IF/ID buffer
@@ -161,6 +162,9 @@ int main()
 	INSTRUCTION_MEMORY[0] = "0111111110000000";//sgti $7,$6,0
 	INSTRUCTION_MEMORY[1] = "1110111001001100";//go to ENDLOOP bez $7, 7	
 
+	//Let's run the fetch/decode twice to test two instructions
+	fetch();
+	decode();
 	fetch();
 	decode();
 	
@@ -186,9 +190,9 @@ int main()
 
 //Function for analyzing opcode
 //returns struct with status of each control line
-/*void ControlUnit(string inputOpCode, ControlOut& inputStruct)
+void ControlUnit(string inputOpCode, ControlOut& inputStruct)
 {
-	ControlOut tempControlOut = {false, false, false, false, false, false, false, {0,0}};
+	ControlOut tempControlOut = {false, false, false, false, false, false, false, false, {0,0}};
 	
 	int OPint = -1;
 	//create array with all possible string-based opcodes
@@ -216,6 +220,7 @@ int main()
 			tempControlOut.aluOP[1] = 1;
 			tempControlOut.aluSRC = 0;
 			tempControlOut.branch = 0;
+			tempControlOut.jump = 0;
 			tempControlOut.memRead = 0;
 			tempControlOut.memToReg = 0;
 			tempControlOut.memWrite = 0;
@@ -227,6 +232,7 @@ int main()
 			tempControlOut.aluOP[1] = 0;
 			tempControlOut.aluSRC = 1;
 			tempControlOut.branch = 0;
+			tempControlOut.jump = 0;
 			tempControlOut.memRead = 1;
 			tempControlOut.memToReg = 1;
 			tempControlOut.memWrite = 0;
@@ -238,6 +244,7 @@ int main()
 			tempControlOut.aluOP[1] = 0;
 			tempControlOut.aluSRC = 1;
 			tempControlOut.branch = 0;
+			tempControlOut.jump = 0;
 			tempControlOut.memRead = 0;
 			tempControlOut.memToReg = 0;	//Don't care
 			tempControlOut.memWrite = 1;
@@ -245,21 +252,23 @@ int main()
 			tempControlOut.regWrite = 0;
 			break;
 		case LOGICAL:
-			tempControlOut.aluOP[0] = 
-			tempControlOut.aluOP[1] = 
-			tempControlOut.aluSRC = 
+			tempControlOut.aluOP[0] = 0;
+			tempControlOut.aluOP[1] = 1;
+			tempControlOut.aluSRC = 0;
 			tempControlOut.branch = 0;
-			tempControlOut.memRead = 
-			tempControlOut.memToReg = 
-			tempControlOut.memWrite = 
-			tempControlOut.regDest = 
-			tempControlOut.regWrite = 
+			tempControlOut.jump = 0;
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 1;
+			tempControlOut.regWrite = 1;
 			break;
 		case ShiftLeft:
 			tempControlOut.aluOP[0] = 
 			tempControlOut.aluOP[1] = 
 			tempControlOut.aluSRC = 
 			tempControlOut.branch = 0;
+			tempControlOut.jump = 0;
 			tempControlOut.memRead = 
 			tempControlOut.memToReg = 
 			tempControlOut.memWrite = 
@@ -271,6 +280,7 @@ int main()
 			tempControlOut.aluOP[1] = 
 			tempControlOut.aluSRC = 
 			tempControlOut.branch = 0;
+			tempControlOut.jump = 0;
 			tempControlOut.memRead = 
 			tempControlOut.memToReg = 
 			tempControlOut.memWrite = 
@@ -282,6 +292,7 @@ int main()
 			tempControlOut.aluOP[1] = 
 			tempControlOut.aluSRC = 
 			tempControlOut.branch = 1;
+			tempControlOut.jump = 0;
 			tempControlOut.memRead = 
 			tempControlOut.memToReg = 
 			tempControlOut.memWrite = 
@@ -292,7 +303,8 @@ int main()
 			tempControlOut.aluOP[0] = 
 			tempControlOut.aluOP[1] = 
 			tempControlOut.aluSRC = 
-			tempControlOut.branch = 
+			tempControlOut.branch = 1;
+			tempControlOut.jump = 0;
 			tempControlOut.memRead = 
 			tempControlOut.memToReg = 
 			tempControlOut.memWrite = 
@@ -304,6 +316,7 @@ int main()
 			tempControlOut.aluOP[1] = 
 			tempControlOut.aluSRC = 
 			tempControlOut.branch = 
+			tempControlOut.jump = 1;
 			tempControlOut.memRead = 
 			tempControlOut.memToReg = 
 			tempControlOut.memWrite = 
@@ -311,43 +324,29 @@ int main()
 			tempControlOut.regWrite = 
 			break;
 		case AddIm:
-			tempControlOut.aluOP[0] = 
-			tempControlOut.aluOP[1] = 
-			tempControlOut.aluSRC = 
-			tempControlOut.branch = 
-			tempControlOut.memRead = 
-			tempControlOut.memToReg = 
-			tempControlOut.memWrite = 
-			tempControlOut.regDest = 
-			tempControlOut.regWrite = 
+			tempControlOut.aluOP[0] = 0;
+			tempControlOut.aluOP[1] = 0;
+			tempControlOut.aluSRC = 1;
+			tempControlOut.branch = 0;
+			tempControlOut.jump = 0;
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 1;
+			tempControlOut.regWrite = 1;
+			
 			break;
 		case SubIm:
-			tempControlOut.aluOP[0] = 
-			tempControlOut.aluOP[1] = 
-			tempControlOut.aluSRC = 
-			tempControlOut.branch = 
-			tempControlOut.memRead = 
-			tempControlOut.memToReg = 
-			tempControlOut.memWrite = 
-			tempControlOut.regDest = 
-			tempControlOut.regWrite = 
-			break;
-		default:
-			//no opcode was found
-			cout << "Error finding opcode" << endl;
-			break;
-	}
-	//The comments. They are everywhere.  Why not here?
-}*/
-
-//ALU Function accept 3-bit function code, 2-bit OP-code, and inputs A & B
-//then perform the correct operation.
-int funcALU (int ALU_FUNC_CODE, int ALU_OP, int ALU_A, int ALU_B) {
-	int ALU_Result = 0;
-	
-	switch (ALU_OP) {
-		case 0: //addition
-			ALU_Result = ALU_A + ALU_B;
+			tempControlOut.aluOP[0] = 1;
+			tempControlOut.aluOP[1] = 0;
+			tempControlOut.aluSRC = 1;
+			tempControlOut.branch = 0;
+			tempControlOut.jump = 0;
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 1;
+			tempControlOut.regWrite = 1;
 			break;
 
 		case 1: //and
@@ -419,6 +418,7 @@ void decode()
 	int opCode;
 	string functionCode;
 	ControlOut controlBits;
+	char * pEnd;
 	
 	//Strip the function code from the current instruction
 	string funcCode = FETCH_DECODE.instruction.substr(13,3);
@@ -431,28 +431,28 @@ void decode()
 	DECODE_EX.functionCode = funcCode;
 	
 	//Store RD field
-	DECODE_EX.registerRD = atoi(FETCH_DECODE.instruction.substr(10,3).c_str());
+	DECODE_EX.registerRD = strtol(FETCH_DECODE.instruction.substr(10,3).c_str(), &pEnd, 2);
 	
 #ifdef DEBUG
 	cout << "CURRENT REGISTER RD: " << DECODE_EX.registerRD << endl;
 #endif
 
 	//Store RT field
-	DECODE_EX.registerRT = atoi(FETCH_DECODE.instruction.substr(7,3).c_str());
+	DECODE_EX.registerRT = strtol(FETCH_DECODE.instruction.substr(7,3).c_str(), &pEnd, 2);
 	
 #ifdef DEBUG
 	cout << "CURRENT REGISTER RT: " << DECODE_EX.registerRT << endl;
 #endif
 
 	//Store RS field
-	DECODE_EX.registerRS = atoi(FETCH_DECODE.instruction.substr(5,3).c_str());
+	DECODE_EX.registerRS = strtol(FETCH_DECODE.instruction.substr(5,3).c_str(), &pEnd, 2);
 	
 #ifdef DEBUG
 	cout << "CURRENT REGISTER RS: " << DECODE_EX.registerRS << endl;
 #endif
 
 	//Store Sign Extended Value
-	DECODE_EX.signExtendedVal = atoi(FETCH_DECODE.instruction.substr(11,5).c_str());
+	DECODE_EX.signExtendedVal = strtol(FETCH_DECODE.instruction.substr(11,5).c_str(), &pEnd, 2);
 	
 #ifdef DEBUG
 	cout << "CURRENT SIGN EXTENDED VAL: " << DECODE_EX.signExtendedVal << endl;
@@ -477,6 +477,17 @@ void decode()
 	//Get the opcode and call the control unit
 	DECODE_EX.opCode = FETCH_DECODE.instruction.substr(0,4);
 	
+#ifdef DEBUG
+	cout << "OP CODE: " << DECODE_EX.opCode << endl << endl;
+#endif
+	
 	//Call the control unit here
 	//ContolUnit(DECODE_EX.opCode, DECODE_EX.controlBits);
+	
+	PC = PC + 1;
 }
+
+void execute()
+{
+}
+
