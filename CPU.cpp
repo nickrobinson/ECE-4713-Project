@@ -2,9 +2,12 @@
 #include<string>
 using namespace std;
 
+#define DEBUG
+
 //Function definitions
 void fetch();
 void decode();
+void execute();
 int funcALU();
 
 //Global Variables
@@ -96,8 +99,13 @@ struct ID_EX_Buffer
 
 };
 
+struct EX_MEM_Buffer
+{
+};
+
 IF_ID_Buffer FETCH_DECODE;
 ID_EX_Buffer DECODE_EX;
+EX_MEM_Buffer EX_MEM;
 
 
 //Function for analyzing opcode
@@ -470,4 +478,5 @@ void decode()
 	DECODE_EX.opCode = FETCH_DECODE.instruction.substr(0,4);
 	
 	//Call the control unit here
+	//ContolUnit(DECODE_EX.opCode, DECODE_EX.controlBits);
 }
