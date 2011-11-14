@@ -187,6 +187,57 @@ int main()
 
 }
 
+//ALU Function accept 3-bit function code and inputs A & B
+//then perform the correct operation.
+int funcALU (int ALU_OP, int ALU_A, int ALU_B) {
+	int ALU_Result = 0;
+	
+	switch (ALU_OP) {
+		case 0: //addition
+			ALU_Result = ALU_A + ALU_B;
+			break;
+
+		case 1: //and
+			ALU_Result = ALU_A & ALU_B;
+			break;
+
+		case 2: //or
+			ALU_Result = ALU_A | ALU_B;
+			break;
+			
+		case 3: //Nor
+			ALU_Result = ~(ALU_A | ALU_B);
+			break;
+		
+		case 4: //set greater than
+			if (ALU_A > ALU_B) 
+				ALU_Result = 1;
+			else
+				ALU_Result = 0;
+			break;
+			
+		case 5: //set on less than
+			if (ALU_A < ALU_B){
+				ALU_Result = 1;
+				ALU_Zero = 1;
+			}
+			else{
+				ALU_Result = 0;
+				ALU_Zero = 0;
+			}
+			break;
+			
+		case 6: //subtract
+			ALU_Result = ALU_A - ALU_B;
+			if (ALU_Result == 0)
+				ALU_Zero = 1;
+			else ALU_Zero = 0;
+			break;
+	}
+	
+	return ALU_Result;
+}
+
 
 //Function for analyzing opcode
 //returns struct with status of each control line
@@ -264,64 +315,64 @@ void ControlUnit(string inputOpCode, ControlOut& inputStruct)
 			tempControlOut.regWrite = 1;
 			break;
 		case ShiftLeft:
-			tempControlOut.aluOP[0] = 
-			tempControlOut.aluOP[1] = 
-			tempControlOut.aluSRC = 
+			tempControlOut.aluOP[0] = 1;
+			tempControlOut.aluOP[1] = 1;
+			tempControlOut.aluSRC = 1;
 			tempControlOut.branch = 0;
 			tempControlOut.jump = 0;
-			tempControlOut.memRead = 
-			tempControlOut.memToReg = 
-			tempControlOut.memWrite = 
-			tempControlOut.regDest = 
-			tempControlOut.regWrite = 
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 0;
+			tempControlOut.regWrite = 1;
 			break;
 		case ShiftRight:
-			tempControlOut.aluOP[0] = 
-			tempControlOut.aluOP[1] = 
-			tempControlOut.aluSRC = 
+			tempControlOut.aluOP[0] = 1;
+			tempControlOut.aluOP[1] = 1;
+			tempControlOut.aluSRC = 1;
 			tempControlOut.branch = 0;
 			tempControlOut.jump = 0;
-			tempControlOut.memRead = 
-			tempControlOut.memToReg = 
-			tempControlOut.memWrite = 
-			tempControlOut.regDest = 
-			tempControlOut.regWrite = 
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 0;
+			tempControlOut.regWrite = 1;
 			break;
 		case BranchIfEqual:
-			tempControlOut.aluOP[0] = 
-			tempControlOut.aluOP[1] = 
-			tempControlOut.aluSRC = 
+			tempControlOut.aluOP[0] = 1;
+			tempControlOut.aluOP[1] = 0;
+			tempControlOut.aluSRC = 0;
 			tempControlOut.branch = 1;
 			tempControlOut.jump = 0;
-			tempControlOut.memRead = 
-			tempControlOut.memToReg = 
-			tempControlOut.memWrite = 
-			tempControlOut.regDest = 
-			tempControlOut.regWrite = 
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 0;
+			tempControlOut.regWrite = 0;
 			break;
-		case BranchIfLessThan:
-			tempControlOut.aluOP[0] = 
-			tempControlOut.aluOP[1] = 
-			tempControlOut.aluSRC = 
-			tempControlOut.branch = 1;
+		case SetIfLessThan:
+			tempControlOut.aluOP[0] = 1;
+			tempControlOut.aluOP[1] = 0;
+			tempControlOut.aluSRC = 0;
+			tempControlOut.branch = 0;
 			tempControlOut.jump = 0;
-			tempControlOut.memRead = 
-			tempControlOut.memToReg = 
-			tempControlOut.memWrite = 
-			tempControlOut.regDest = 
-			tempControlOut.regWrite = 
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 1;
+			tempControlOut.regWrite = 1;
 			break;
 		case Jump:
-			tempControlOut.aluOP[0] = 
-			tempControlOut.aluOP[1] = 
-			tempControlOut.aluSRC = 
-			tempControlOut.branch = 
+			tempControlOut.aluOP[0] = 0; 
+			tempControlOut.aluOP[1] = 0;
+			tempControlOut.aluSRC = 0;
+			tempControlOut.branch = 0;
 			tempControlOut.jump = 1;
-			tempControlOut.memRead = 
-			tempControlOut.memToReg = 
-			tempControlOut.memWrite = 
-			tempControlOut.regDest = 
-			tempControlOut.regWrite = 
+			tempControlOut.memRead = 0;
+			tempControlOut.memToReg = 0;
+			tempControlOut.memWrite = 0;
+			tempControlOut.regDest = 0;
+			tempControlOut.regWrite = 0;
 			break;
 		case AddIm:
 			tempControlOut.aluOP[0] = 0;
@@ -348,48 +399,7 @@ void ControlUnit(string inputOpCode, ControlOut& inputStruct)
 			tempControlOut.regDest = 1;
 			tempControlOut.regWrite = 1;
 			break;
-
-		case 1: //and
-			ALU_Result = ALU_A & ALU_B;
-			break;
-
-		case 2: //or
-			ALU_Result = ALU_A | ALU_B;
-			break;
-			
-		case 3: //Nor
-			ALU_Result = ~(ALU_A | ALU_B);
-			break;
-		
-		case 4: //set greater than
-			if (ALU_A > ALU_B) 
-				ALU_Result = 1;
-			else
-				ALU_Result = 0;
-			break;
-			
-		case 5: //set on less than
-			if (ALU_A < ALU_B){
-				ALU_Result = 1;
-				ALU_Zero = 1;
-			}
-			else{
-				ALU_Result = 0;
-				ALU_Zero = 0;
-			}
-			break;
-			
-		case 6: //subtract
-			ALU_Result = ALU_A - ALU_B;
-			if (ALU_Result == 0){
-				ALU_Zero = 1;
-			}
-			else 
-				ALU_Zero = 0;
-			break;
 	}
-	
-	return ALU_Result;
 }
 
 void fetch()
@@ -484,6 +494,7 @@ void decode()
 	//Call the control unit here
 	//ContolUnit(DECODE_EX.opCode, DECODE_EX.controlBits);
 	
+	//Make sure to comment this out later. Only using for testing purposes
 	PC = PC + 1;
 }
 
