@@ -263,7 +263,7 @@ void ControlUnit(string inputOpCode, ControlOut& inputStruct)
 	}
 
 	//deal with each case and set control bits
-	switch(OPint)
+	switch(OPint):
 	{
 		case NOP:
 			break;
