@@ -93,6 +93,7 @@ struct ID_EX_Buffer
 	int regOut2;
 	int signExtendedVal;
 	int currentPC;
+	int jumpValue;
 	string functionCode;
 	string opCode;
 	ControlOut controlBits;
@@ -488,7 +489,7 @@ void decode()
 	DECODE_EX.opCode = FETCH_DECODE.instruction.substr(0,4);
 	
 #ifdef DEBUG
-	cout << "OP CODE: " << DECODE_EX.opCode << endl << endl;
+	cout << "OP CODE: " << DECODE_EX.opCode << endl;
 #endif
 	
 	//Call the control unit here
@@ -496,9 +497,19 @@ void decode()
 	
 	//Make sure to comment this out later. Only using for testing purposes
 	PC = PC + 1;
+
+	//Add shift left 2 on 11-0i
+	int tempJumpValue = strtol(FETCH_DECODE.instruction.substr(11,0).c_str(), &pEnd, 2);
+	DECODE_EX.jumpValue = tempJumpValue << 2;
+
+#ifdef DEBUG
+	cout << "JUMP VALUE: " << DECODE_EX.jumpValue << endl << endl;
+#endif
+
 }
 
 void execute()
 {
+	//Make sure to do the shift left 2
 }
 
