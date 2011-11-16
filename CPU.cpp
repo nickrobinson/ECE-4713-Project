@@ -103,6 +103,40 @@ struct ID_EX_Buffer
 
 struct EX_MEM_Buffer
 {
+	bool WriteBack;
+	bool MemAccess;
+	bool EX;
+	int registerRD;
+	int registerRT;
+	int registerRS;
+	int regOut1;
+	int regOut2;
+	int signExtendedVal;
+	int currentPC;
+	int jumpValue;
+	string functionCode;
+	string opCode;
+	ControlOut controlBits;
+	//32 for sign extended inst
+};
+
+struct MEM_WB_Buffer
+{
+	bool WriteBack;
+	bool MemAccess;
+	bool EX;
+	int registerRD;
+	int registerRT;
+	int registerRS;
+	int regOut1;
+	int regOut2;
+	int signExtendedVal;
+	int currentPC;
+	int jumpValue;
+	string functionCode;
+	string opCode;
+	ControlOut controlBits;
+	//32 for sign extended inst
 };
 
 IF_ID_Buffer FETCH_DECODE;
@@ -263,7 +297,7 @@ void ControlUnit(string inputOpCode, ControlOut& inputStruct)
 	}
 
 	//deal with each case and set control bits
-	switch(OPint):
+	switch(OPint)
 	{
 		case NOP:
 			break;
@@ -513,3 +547,31 @@ void execute()
 	//Make sure to do the shift left 2
 }
 
+//takes in address, write data bit, mem write bit, mem read bit, then reads data, and places it in the mem/wb buffer
+void memoryFunction(EX_MEM_Buffer inputEX_MEM_Buffer, MEM_WB_Buffer& inputMEMWBBuffer)
+{
+	//psuedo code
+
+	//Save word instruction
+	//Writes the value in the input register to the data memory
+	//Data memory is specified by the EX_MEM_Buffer ALU result from sign extension and ALUOPs
+	if(inputCtrlBits.memWrite)
+	{
+		DATA_MEMORY[EX_MEM_Buffer.] = inputMEMWBBuffer.;
+	}
+	
+	//Load word instruction
+	//Reads a value from memory at address specified by the result from ALU that represents sign extended address
+	//Stores data in the input EX_MEM_Buffer
+	else if(inputCtrlBits.memRead)
+	{
+		inputMEMWBBuffer. = DATA_MEMORY[EX_MEM_Buffer.signExtendedVal];
+	}
+
+	//Branch or R-type instruction
+	else
+	{
+		//Doesnt do anything?
+
+	}
+}
