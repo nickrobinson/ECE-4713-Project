@@ -17,6 +17,14 @@ int REG_ARRAY[8];
 int PC = 0x00;
 int ALU_Zero = 0;
 
+int branchValue;
+int jumpValue;
+bool jumpControl;
+bool PCSRC;				//Program counter source
+int WB_write_data;
+int WB_destination_register;
+bool WB_control_bit;
+
 typedef enum OPCODE
 { 
 	NOP,
@@ -94,6 +102,7 @@ struct ID_EX_Buffer
 	int signExtendedVal;
 	int currentPC;
 	int jumpValue;
+	int branchValue;
 	string functionCode;
 	string opCode;
 	ControlOut controlBits;
@@ -106,17 +115,18 @@ struct EX_MEM_Buffer
 	bool WriteBack;
 	bool MemAccess;
 	bool EX;
-	int registerRD;
-	int registerRT;
-	int registerRS;
+        bool isZero;
+	int destRegister;
 	int regOut1;
 	int regOut2;
 	int signExtendedVal;
 	int currentPC;
 	int jumpValue;
+	int branchValue;
 	string functionCode;
 	string opCode;
 	ControlOut controlBits;
+	int ALUResult;
 	//32 for sign extended inst
 };
 
@@ -136,6 +146,25 @@ struct MEM_WB_Buffer
 	string functionCode;
 	string opCode;
 	ControlOut controlBits;
+	int destinationRegister;
+	int dataToWrite;
+	int adderResult;				//Used with the global branch set in the MEM stage
+									//Originates from the adder in the EX stage
+	//32 for sign extended inst
+};
+
+struct MEM_WB_Buffer
+{
+	bool WriteBack;
+	bool MemAccess;
+	bool EX;					
+	int ALUResult;				//The result from the ALU in the EX stage. Either Calculation or Address.
+	int currentPC;				//self explanatory
+	string functionCode;		//self explanatory
+	string opCode;				//self explanatory
+	ControlOut controlBits;		//Carried over from previous stages
+	int memReadData;			//The data stored by a memRead (lw) from the mem stage
+	int destinationRegister;	//Which register has been chosen
 	//32 for sign extended inst
 };
 
@@ -200,8 +229,10 @@ int main()
 	//Let's run the fetch/decode twice to test two instructions
 	fetch();
 	decode();
+	execute();
 	fetch();
 	decode();
+	execute();
 	
 	//init global clock
 
@@ -224,50 +255,70 @@ int main()
 
 //ALU Function accept 3-bit function code and inputs A & B
 //then perform the correct operation.
-int funcALU (int ALU_OP, int ALU_A, int ALU_B) {
+int funcALU (int ALU_OP, int ALU_A, int ALU_B, int ALU_FUNC) {
 	int ALU_Result = 0;
 	
-	switch (ALU_OP) {
-		case 0: //addition
-			ALU_Result = ALU_A + ALU_B;
-			break;
+	
+	if(ALU_OP == 0)
+	{
+		ALU_Result = ALU_A + ALU_B;
+	}
+	else if(ALU_OP == 1)
+	{
+		ALU_Result = ALU_A - ALU_B;
+		if (ALU_Result == 0)
+			ALU_Zero = 1;
+		else ALU_Zero = 0;
+	}
+	else if(ALU_OP == 2)
+	{
+		switch(ALU_FUNC){
 
-		case 1: //and
-			ALU_Result = ALU_A & ALU_B;
-			break;
+			case 0: //And
+				ALU_Result = ALU_A & ALU_B;
+				break;
 
-		case 2: //or
-			ALU_Result = ALU_A | ALU_B;
-			break;
-			
-		case 3: //Nor
-			ALU_Result = ~(ALU_A | ALU_B);
-			break;
-		
-		case 4: //set greater than
-			if (ALU_A > ALU_B) 
-				ALU_Result = 1;
-			else
-				ALU_Result = 0;
-			break;
-			
-		case 5: //set on less than
-			if (ALU_A < ALU_B){
-				ALU_Result = 1;
-				ALU_Zero = 1;
-			}
-			else{
-				ALU_Result = 0;
-				ALU_Zero = 0;
-			}
-			break;
-			
-		case 6: //subtract
-			ALU_Result = ALU_A - ALU_B;
-			if (ALU_Result == 0)
-				ALU_Zero = 1;
-			else ALU_Zero = 0;
-			break;
+			case 1: //or
+				ALU_Result = ALU_A | ALU_B;
+				break;
+
+			case 2: //add
+				ALU_Result = ALU_A + ALU_B;
+				break;
+			case 3: //Nor
+				ALU_Result = ~(ALU_A | ALU_B);
+				break;
+			case 4: //Shift left logical
+				//Must shift ALU_B to the left by three as the
+				//shift amount we care about is stored in bits
+				//[5-3]
+				ALU_B = ALU_B >> 3;
+				ALU_Result = ALU_A << ALU_B;
+				break;
+			case 5: //Shift right logical
+				//Must shift ALU_B to the left by three as the
+				//shift amount we care about is stored in bits
+				//[5-3]
+				ALU_B = ALU_B >> 3;
+				ALU_Result = ALU_A >> ALU_B;
+				break;
+			case 6: //subtract
+				ALU_Result = ALU_A - ALU_B;
+				if (ALU_Result == 0)
+					ALU_Zero = 1;
+				else ALU_Zero = 0;
+				break;
+			case 7: //set less than
+				if (ALU_A < ALU_B){
+					ALU_Result = 1;
+					ALU_Zero = 1;
+				}
+				else{
+					ALU_Result = 0;
+					ALU_Zero = 0;
+				}
+				break;
+		}
 	}
 	
 	return ALU_Result;
@@ -540,38 +591,129 @@ void decode()
 	cout << "JUMP VALUE: " << DECODE_EX.jumpValue << endl << endl;
 #endif
 
+	//Store the whole instruction value for the branch value
+	int tempBranchValue = strtol(FETCH_DECODE.instruction.substr(15,0).c_str(), &pEnd, 2);
+	DECODE_EX.branchValue = tempBranchValue;
 }
 
 void execute()
 {
+	char* pEnd;
 	//Make sure to do the shift left 2
+	
+	//Copy the jump value
+	EX_MEM.jumpValue = DECODE_EX.jumpValue;
+
+	//Copy the function code
+	EX_MEM.functionCode = DECODE_EX.functionCode;
+
+	//Copy the Control bits
+	EX_MEM.controlBits = DECODE_EX.controlBits;
+
+	//Shift the sign extended value to send through the adder
+	int tempSignExtend = DECODE_EX.signExtendedVal;
+	tempSignExtend = tempSignExtend << 2;
+	EX_MEM.signExtendedVal = tempSignExtend;
+
+	//Calculate the branch value
+	EX_MEM.branchValue = DECODE_EX.branchValue + EX_MEM.signExtendedVal;
+
+	//Store destination register signal
+	if(EX_MEM.controlBits.regDest == 0)
+	{
+		EX_MEM.destRegister = DECODE_EX.registerRT;
+	}
+	else if(EX_MEM.controlBits.regDest == 1)
+	{
+		EX_MEM.destRegister = DECODE_EX.registerRD;
+	}
+
+	/* Store ALU input number 2 which is either the
+	// sign extended value from the fetch stage or the
+	// second read register from the fetch stage based on
+	// ALUSrc
+	*/
+	
+	int tempALU_B;
+
+	if(EX_MEM.controlBits.aluSRC == 0)
+	{
+		tempALU_B = DECODE_EX.regOut2;
+	}
+	else if(EX_MEM.controlBits.aluSRC == 1)
+	{
+		tempALU_B = DECODE_EX.signExtendedVal;
+	}
+
+	//Store the ALU_A variable in a temp variable then lets
+	//call the funcALU to perform the ALU arithmetic
+	int tempALU_A = DECODE_EX.regOut1;
+	int tempFuncCode = strtol(EX_MEM.functionCode.c_str(), &pEnd, 2);
+
+	funcALU(EX_MEM.controlBits.aluOP, tempALU_A, tempALU_B, tempFuncCode); 
+		
 }
 
 //takes in address, write data bit, mem write bit, mem read bit, then reads data, and places it in the mem/wb buffer
-void memoryFunction(EX_MEM_Buffer inputEX_MEM_Buffer, MEM_WB_Buffer& inputMEMWBBuffer)
+void memoryFunction(EX_MEM_Buffer inputEX_MEM_Buffer, MEM_WB_Buffer& inputMEM_WB_Buffer)
 {
-	//psuedo code
+	
+	inputMEM_WB_Buffer.address = inputEX_MEM_Buffer.address;
+	
+	if(inputEX_MEM_Buffer.controlBits.branch && inputEX_MEM_Buffer.isZero)
+	{
+		//set PCSPC
+	}
 
 	//Save word instruction
 	//Writes the value in the input register to the data memory
 	//Data memory is specified by the EX_MEM_Buffer ALU result from sign extension and ALUOPs
-	if(inputCtrlBits.memWrite)
+	if(inputEX_MEM_Buffer.controlBits.memWrite)
 	{
-		DATA_MEMORY[EX_MEM_Buffer.] = inputMEMWBBuffer.;
+		//I'm assuming that the ALUResult is basically the address
+		DATA_MEMORY[inputEX_MEM_Buffer.ALUResult] = inputEX_MEM_Buffer.dataToWrite;
 	}
 	
 	//Load word instruction
 	//Reads a value from memory at address specified by the result from ALU that represents sign extended address
 	//Stores data in the input EX_MEM_Buffer
-	else if(inputCtrlBits.memRead)
+	else if(inputEX_MEM_Buffer.controlBits.memRead)
 	{
-		inputMEMWBBuffer. = DATA_MEMORY[EX_MEM_Buffer.signExtendedVal];
+		//I'm assuming that the ALUResult is basically the address, again
+		inputMEM_WB_Buffer.memReadData = DATA_MEMORY[inputEX_MEM_Buffer.ALUResult];
 	}
 
 	//Branch or R-type instruction
 	else
 	{
-		//Doesnt do anything?
+		//Im still not sure if this actually does anthing
+
 
 	}
+
+}
+
+
+//Takes in the MEM_WB_Buffer and sets necessary parameters for proper register functionality
+//including the write back data (either the alu result or the data from registers), the
+//write back destination register, and a global write back control bit
+void writeBack(MEM_WB_Buffer inputMEM_WB_Buffer)
+{
+	if(inputMEM_WB_Buffer.controlBits.memToReg)
+	{
+		//write the ALUresult to the registers
+		WB_write_data = inputMEM_WB_Buffer.ALUResult;
+	}
+	else
+	{
+		//write the loaded data to registers
+		WB_write_data = inputMEM_WB_Buffer.memReadData;
+	}
+
+	//Set the register destination
+	WB_destination_register = inputMEM_WB_Buffer.destinationRegister;
+
+	//Set the global wb control bit to write to registers based on if 
+	//the bit is set in the control bits of the mem/wb buffer
+	WB_control_bit = inputMEM_WB_Buffer.controlBits.regWrite;
 }
