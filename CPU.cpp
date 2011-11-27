@@ -20,6 +20,10 @@ int WB_write_data;
 int WB_destination_register;
 bool WB_control_bit;
 
+#ifdef DEBUG
+	ofstream logFile;
+#endif
+
 typedef enum OPCODE
 { 
 	NOP,
@@ -137,6 +141,10 @@ int main()
 	int numberOfInstructions = 0;
 	int counter;
 	
+#ifdef DEBUG
+	logFile.open("log.txt");
+#endif
+	
 	//Wipe Instruction Memory
 	for (counter = 0; counter < 100; counter++)
 	{
@@ -231,6 +239,15 @@ int main()
 			execute();
 			decode();
 			fetch();
+			
+			logFile << "REG[0]: " << REG_ARRAY[0] << endl;
+			logFile << "REG[1]: " << REG_ARRAY[1] << endl;
+			logFile << "REG[2]: " << REG_ARRAY[2] << endl;
+			logFile << "REG[3]: " << REG_ARRAY[3] << endl;
+			logFile << "REG[4]: " << REG_ARRAY[4] << endl;
+			logFile << "REG[5]: " << REG_ARRAY[5] << endl;
+			logFile << "REG[6]: " << REG_ARRAY[6] << endl;
+			logFile << "REG[7]: " << REG_ARRAY[7] << endl << endl;
 			break;
 		}
 		cpuClock++;
@@ -280,7 +297,7 @@ void decode()
 	string funcCode = FETCH_DECODE.instruction.substr(13,3);
 	
 #ifdef DEBUG
-	cout << "CURRENT FUNCTION CODE: " << funcCode << endl;
+	logFile << "CURRENT FUNCTION CODE: " << funcCode << endl;
 #endif
 	
 	//Store current function code in DECODE_EX buffer
@@ -290,28 +307,28 @@ void decode()
 	DECODE_EX.registerRD = strtol(FETCH_DECODE.instruction.substr(10,3).c_str(), &pEnd, 2);
 	
 #ifdef DEBUG
-	cout << "CURRENT REGISTER RD: " << DECODE_EX.registerRD << endl;
+	logFile << "CURRENT REGISTER RD: " << DECODE_EX.registerRD << endl;
 #endif
 
 	//Store RT field
 	DECODE_EX.registerRT = strtol(FETCH_DECODE.instruction.substr(7,3).c_str(), &pEnd, 2);
 	
 #ifdef DEBUG
-	cout << "CURRENT REGISTER RT: " << DECODE_EX.registerRT << endl;
+	logFile << "CURRENT REGISTER RT: " << DECODE_EX.registerRT << endl;
 #endif
 
 	//Store RS field
 	DECODE_EX.registerRS = strtol(FETCH_DECODE.instruction.substr(5,3).c_str(), &pEnd, 2);
 	
 #ifdef DEBUG
-	cout << "CURRENT REGISTER RS: " << DECODE_EX.registerRS << endl;
+	logFile << "CURRENT REGISTER RS: " << DECODE_EX.registerRS << endl;
 #endif
 
 	//Store Sign Extended Value
 	DECODE_EX.signExtendedVal = strtol(FETCH_DECODE.instruction.substr(11,5).c_str(), &pEnd, 2);
 	
 #ifdef DEBUG
-	cout << "CURRENT SIGN EXTENDED VAL: " << DECODE_EX.signExtendedVal << endl;
+	logFile << "CURRENT SIGN EXTENDED VAL: " << DECODE_EX.signExtendedVal << endl;
 #endif
 
 	//Read and store register values
@@ -319,22 +336,22 @@ void decode()
 	DECODE_EX.regOut2 = REG_ARRAY[DECODE_EX.registerRT];
 	
 #ifdef DEBUG
-	cout << "REG OUT 1: " << DECODE_EX.regOut1 << endl;
-	cout << "REG OUT 2: " << DECODE_EX.regOut2 << endl;
+	logFile << "REG OUT 1: " << DECODE_EX.regOut1 << endl;
+	logFile << "REG OUT 2: " << DECODE_EX.regOut2 << endl;
 #endif
 	
 	//Update PC value
 	DECODE_EX.currentPC = FETCH_DECODE.PC;
 	
 #ifdef DEBUG
-	cout << "CURRENT PC: " << DECODE_EX.currentPC << endl;
+	logFile << "CURRENT PC: " << DECODE_EX.currentPC << endl;
 #endif
 	
 	//Get the opcode and call the control unit
 	DECODE_EX.opCode = FETCH_DECODE.instruction.substr(0,4);
 	
 #ifdef DEBUG
-	cout << "OP CODE: " << DECODE_EX.opCode << endl;
+	logFile << "OP CODE: " << DECODE_EX.opCode << endl;
 #endif
 	
 	//Call the control unit here
@@ -348,7 +365,7 @@ void decode()
 	DECODE_EX.jumpValue = tempJumpValue << 2;
 
 #ifdef DEBUG
-	cout << "JUMP VALUE: " << DECODE_EX.jumpValue << endl;
+	logFile << "JUMP VALUE: " << DECODE_EX.jumpValue << endl << endl;
 #endif
 
 	//Store the whole instruction value for the branch value
@@ -723,5 +740,7 @@ void writeBack()
 	//the bit is set in the control bits of the mem/wb buffer
 	WB_control_bit = MEM_WB.controlBits.regWrite;
 
-	cout << "WB data:  " << WB_write_data << endl << endl;
+#ifdef DEBUG
+	logFile << "WB data:  " << WB_write_data << endl << endl;
+#endif
 }
