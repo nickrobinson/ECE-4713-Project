@@ -54,18 +54,10 @@ struct ControlOut
 	int aluOP;
 };
 
-//Structure for the IF/ID buffer
-struct IF_ID_Buffer
+struct SUPER_Buffer
 {
 	string instruction;
-	int PC;
-};
-
-struct ID_EX_Buffer
-{
-	bool WriteBack;
-	bool MemAccess;
-	bool EX;
+	int currentPC;
 	int registerRD;
 	int registerRT;
 	int registerRS;
@@ -78,56 +70,22 @@ struct ID_EX_Buffer
 	string functionCode;
 	string opCode;
 	ControlOut controlBits;
-	//32 for sign extended inst
-
-};
-
-struct EX_MEM_Buffer
-{
-	bool WriteBack;
-	bool MemAccess;
-	bool EX;
-    bool isZero;
-	int destRegister;
-	int regOut1;
-	int regOut2;
-	int signExtendedVal;
-	int currentPC;
-	int jumpValue;
-	int branchValue;
-	string functionCode;
-	string opCode;
-	ControlOut controlBits;
 	int ALUResult;
-	//32 for sign extended inst
-};
-
-struct MEM_WB_Buffer
-{
-	bool WriteBack;
-	bool MemAccess;
-	bool EX;					
-	int address;
-	int ALUResult;				//The result from the ALU in the EX stage. Either Calculation or Address.
-	int currentPC;				//self explanatory
-	string functionCode;		//self explanatory
-	string opCode;				//self explanatory
-	ControlOut controlBits;		//Carried over from previous stages
-	int memReadData;			//The data stored by a memRead (lw) from the mem stage
-	int destinationRegister;	//Which register has been chosen
-	//32 for sign extended inst
+	bool isZero;
+	int destRegister;
+	int memReadData;
 };
 
 //Global buffer declarations
-IF_ID_Buffer FETCH_DECODE;
-ID_EX_Buffer DECODE_EX;
-EX_MEM_Buffer EX_MEM;
-MEM_WB_Buffer MEM_WB;
+SUPER_Buffer FETCH_DECODE;
+SUPER_Buffer DECODE_EX;
+SUPER_Buffer EX_MEM;
+SUPER_Buffer MEM_WB;
 
 //Function definitions
 void fetch();
 void decode();
-void ControlUnit(string inputInstruction, ControlOut&);
+void ControlUnit(string inputInstruction);
 void execute();
 int funcALU(int, int, int, int);
 void memory();
@@ -187,7 +145,7 @@ int main()
 	//Initialize Instruction memory for testing purposes
 	//INSTRUCTION_MEMORY[0] = "0111111110000000";//sgti $7,$6,0
 	//INSTRUCTION_MEMORY[1] = "1110111001001100";//go to ENDLOOP bez $7, 7	
-	
+
 	ifstream inputInstructions;
 	inputInstructions.open("instructions.txt");
 
@@ -283,7 +241,7 @@ void fetch()
 	FETCH_DECODE.instruction = INSTRUCTION_MEMORY[PC];
 	
 	//Store incremented PC value in the FETCH_DECODE Buffer
-	FETCH_DECODE.PC = PC + 1;
+	FETCH_DECODE.currentPC = PC + 1;
 }
 
 /******************************************************************************
@@ -291,6 +249,8 @@ void fetch()
 ******************************************************************************/
 void decode()
 {
+	DECODE_EX = FETCH_DECODE;
+
 	char * pEnd;
 	
 	//Strip the function code from the current instruction
@@ -304,7 +264,7 @@ void decode()
 	DECODE_EX.functionCode = funcCode;
 	
 	//Store RD field
-	DECODE_EX.registerRD = strtol(FETCH_DECODE.instruction.substr(10,3).c_str(), &pEnd, 2);
+	DECODE_EX.registerRD = strtol(FETCH_DECODE.instruction.substr(11,3).c_str(), &pEnd, 2);
 	
 #ifdef DEBUG
 	logFile << "CURRENT REGISTER RD: " << DECODE_EX.registerRD << endl;
@@ -361,22 +321,24 @@ void decode()
 	PC = PC + 1;
 
 	//Add shift left 2 on 11-0i
-	int tempJumpValue = strtol(FETCH_DECODE.instruction.substr(11,0).c_str(), &pEnd, 2);
-	DECODE_EX.jumpValue = tempJumpValue << 2;
+	DECODE_EX.jumpValue = strtol(FETCH_DECODE.instruction.substr(11,12).c_str(), NULL, 2);
 
 #ifdef DEBUG
-	logFile << "JUMP VALUE: " << DECODE_EX.jumpValue << endl << endl;
+	logFile << "JUMP VALUE: " << DECODE_EX.jumpValue << endl;
 #endif
 
 	//Store the whole instruction value for the branch value
-	int tempBranchValue = strtol(FETCH_DECODE.instruction.substr(15,0).c_str(), &pEnd, 2);
-	DECODE_EX.branchValue = tempBranchValue;
+	DECODE_EX.branchValue = strtol(FETCH_DECODE.instruction.substr(15,16).c_str(), NULL, 2);
+	
+#ifdef DEBUG
+	logFile << "BRANCH VALUE: " << DECODE_EX.branchValue << endl << endl;
+#endif
 }
 
 /******************************************************************************
 		CONTROL UNIT FUNCTION
 ******************************************************************************/
-void ControlUnit(string inputOpCode, ControlOut& inputStruct)
+void ControlUnit(string inputOpCode)
 {
 	ControlOut tempControlOut = {false, false, false, false, false, false, false, false, 0};
 	
@@ -400,131 +362,139 @@ void ControlUnit(string inputOpCode, ControlOut& inputStruct)
 	switch(OPint)
 	{
 		case NOP:
-			//??tempControlOut.aluOP = 0;
+			DECODE_EX.controlBits.aluOP = 0;
+			DECODE_EX.controlBits.aluSRC = 0;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 0;
+			DECODE_EX.controlBits.regWrite = 0;
 			break;
 		case ARITHEMATIC:
-			tempControlOut.aluOP = 2;
-			tempControlOut.aluSRC = 0;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 1;
-			tempControlOut.regWrite = 1;
+			DECODE_EX.controlBits.aluOP = 2;
+			DECODE_EX.controlBits.aluSRC = 0;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 1;
+			DECODE_EX.controlBits.regWrite = 1;
 			break;
 		case LOAD:
-			tempControlOut.aluOP = 0;
-			tempControlOut.aluSRC = 1;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 1;
-			tempControlOut.memToReg = 1;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 0;
-			tempControlOut.regWrite = 1;
+			DECODE_EX.controlBits.aluOP = 0;
+			DECODE_EX.controlBits.aluSRC = 1;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 1;
+			DECODE_EX.controlBits.memToReg = 1;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 0;
+			DECODE_EX.controlBits.regWrite = 1;
 			break;
 		case STORE:
-			tempControlOut.aluOP = 0;
-			tempControlOut.aluSRC = 1;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;	//Don't care
-			tempControlOut.memWrite = 1;
-			tempControlOut.regDest = 0;		//Don't care
-			tempControlOut.regWrite = 0;
+			DECODE_EX.controlBits.aluOP = 0;
+			DECODE_EX.controlBits.aluSRC = 1;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;	//Don't care
+			DECODE_EX.controlBits.memWrite = 1;
+			DECODE_EX.controlBits.regDest = 0;		//Don't care
+			DECODE_EX.controlBits.regWrite = 0;
 			break;
 		case LOGICAL:
-			tempControlOut.aluOP = 2;
-			tempControlOut.aluSRC = 0;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 1;
-			tempControlOut.regWrite = 1;
+			DECODE_EX.controlBits.aluOP = 2;
+			DECODE_EX.controlBits.aluSRC = 0;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 1;
+			DECODE_EX.controlBits.regWrite = 1;
 			break;
 		case ShiftLeft:
-			tempControlOut.aluOP = 2;
-			tempControlOut.aluSRC = 1;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 0;
-			tempControlOut.regWrite = 1;
+			DECODE_EX.controlBits.aluOP = 2;
+			DECODE_EX.controlBits.aluSRC = 1;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 0;
+			DECODE_EX.controlBits.regWrite = 1;
 			break;
 		case ShiftRight:
-			tempControlOut.aluOP = 2;
-			tempControlOut.aluSRC = 1;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 0;
-			tempControlOut.regWrite = 1;
+			DECODE_EX.controlBits.aluOP = 2;
+			DECODE_EX.controlBits.aluSRC = 1;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 0;
+			DECODE_EX.controlBits.regWrite = 1;
 			break;
 		case BranchIfEqual:
 /******************************************************************************
 i dont know if this alu op is correct. also, attention grabbing
 ******************************************************************************/
-			tempControlOut.aluOP = 0;
-			tempControlOut.aluSRC = 0;
-			tempControlOut.branch = 1;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 0;
-			tempControlOut.regWrite = 0;
+			DECODE_EX.controlBits.aluOP = 0;
+			DECODE_EX.controlBits.aluSRC = 0;
+			DECODE_EX.controlBits.branch = 1;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 0;
+			DECODE_EX.controlBits.regWrite = 0;
 			break;
-		case SetIfGreaterThan:
-			tempControlOut.aluOP = 2;
-			tempControlOut.aluSRC = 0;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 1;
-			tempControlOut.regWrite = 1;
+		case SetIfLessThan:
+			DECODE_EX.controlBits.aluOP = 2;
+			DECODE_EX.controlBits.aluSRC = 0;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 1;
+			DECODE_EX.controlBits.regWrite = 1;
 			break;
 		case Jump:
-			tempControlOut.aluOP = 0;
-			tempControlOut.aluSRC = 0;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 1;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 0;
-			tempControlOut.regWrite = 0;
+			DECODE_EX.controlBits.aluOP = 0;
+			DECODE_EX.controlBits.aluSRC = 0;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 1;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 0;
+			DECODE_EX.controlBits.regWrite = 0;
 			break;
 		case AddIm:
-			tempControlOut.aluOP = 0;
-			tempControlOut.aluSRC = 1;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 1;
-			tempControlOut.regWrite = 1;
+			DECODE_EX.controlBits.aluOP = 0;
+			DECODE_EX.controlBits.aluSRC = 1;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 1;
+			DECODE_EX.controlBits.regWrite = 1;
 			break;
 		case SubIm:
-			tempControlOut.aluOP = 1;
-			tempControlOut.aluSRC = 1;
-			tempControlOut.branch = 0;
-			tempControlOut.jump = 0;
-			tempControlOut.memRead = 0;
-			tempControlOut.memToReg = 0;
-			tempControlOut.memWrite = 0;
-			tempControlOut.regDest = 1;
-			tempControlOut.regWrite = 1;
+			DECODE_EX.controlBits.aluOP = 1;
+			DECODE_EX.controlBits.aluSRC = 1;
+			DECODE_EX.controlBits.branch = 0;
+			DECODE_EX.controlBits.jump = 0;
+			DECODE_EX.controlBits.memRead = 0;
+			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memWrite = 0;
+			DECODE_EX.controlBits.regDest = 1;
+			DECODE_EX.controlBits.regWrite = 1;
 			break;
 	}
 }
@@ -534,6 +504,8 @@ i dont know if this alu op is correct. also, attention grabbing
 ******************************************************************************/
 void execute()
 {
+	EX_MEM = DECODE_EX;
+
 	char* pEnd;
 	//Make sure to do the shift left 2
 	
@@ -545,6 +517,10 @@ void execute()
 
 	//Copy the Control bits
 	EX_MEM.controlBits = DECODE_EX.controlBits;
+
+	/*		NEW		*/
+	//Carry over the regout2
+	EX_MEM.regOut2 = DECODE_EX.regOut2;
 
 	//Shift the sign extended value to send through the adder
 	int tempSignExtend = DECODE_EX.signExtendedVal;
@@ -676,10 +652,14 @@ int funcALU (int ALU_OP, int ALU_A, int ALU_B, int ALU_FUNC)
 *******************************************************************************/
 void memory()
 {
+	MEM_WB = EX_MEM;
 	//I am under the impression that this uses the 
 	//aluresult to determine the address of a register 
-	MEM_WB.address = EX_MEM.ALUResult;
-	
+	/*MEM_WB.ALUResult = EX_MEM.ALUResult;
+	MEM_WB.controlBits = EX_MEM.controlBits;
+	MEM_WB.destRegister = EX_MEM.destRegister;
+*/
+
 	if(EX_MEM.controlBits.branch && EX_MEM.isZero)
 	{
 		//set PCSPC
@@ -734,7 +714,7 @@ void writeBack()
 	}
 
 	//Set the register destination
-	WB_destination_register = MEM_WB.destinationRegister;
+	WB_destination_register = MEM_WB.destRegister;
 
 	//Set the global wb control bit to write to registers based on if 
 	//the bit is set in the control bits of the mem/wb buffer
