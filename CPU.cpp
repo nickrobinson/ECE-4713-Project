@@ -64,7 +64,6 @@ struct SUPER_Buffer
 	int regOut1;
 	int regOut2;
 	int signExtendedVal;
-	int currentPC;
 	int jumpValue;
 	int branchValue;
 	string functionCode;
@@ -301,7 +300,7 @@ void decode()
 #endif
 	
 	//Update PC value
-	DECODE_EX.currentPC = FETCH_DECODE.PC;
+	DECODE_EX.currentPC = FETCH_DECODE.currentPC;
 	
 #ifdef DEBUG
 	logFile << "CURRENT PC: " << DECODE_EX.currentPC << endl;
@@ -315,7 +314,7 @@ void decode()
 #endif
 	
 	//Call the control unit here
-	ControlUnit(DECODE_EX.opCode, DECODE_EX.controlBits);
+	ControlUnit(DECODE_EX.opCode);
 	
 	//Make sure to comment this out later. Only using for testing purposes
 	PC = PC + 1;
@@ -452,7 +451,7 @@ i dont know if this alu op is correct. also, attention grabbing
 			DECODE_EX.controlBits.regDest = 0;
 			DECODE_EX.controlBits.regWrite = 0;
 			break;
-		case SetIfLessThan:
+		case SetIfGreaterThan:
 			DECODE_EX.controlBits.aluOP = 2;
 			DECODE_EX.controlBits.aluSRC = 0;
 			DECODE_EX.controlBits.branch = 0;
