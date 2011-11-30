@@ -50,7 +50,6 @@ struct ControlOut
 	bool memWrite;
 	bool aluSRC;
 	bool jump;
-	//int aluOP[2];
 	int aluOP;
 };
 
@@ -81,6 +80,7 @@ SUPER_Buffer DECODE_EX;
 SUPER_Buffer EX_MEM;
 SUPER_Buffer MEM_WB;
 
+
 //Function definitions
 void fetch();
 void decode();
@@ -89,7 +89,8 @@ void execute();
 int funcALU(int, int, int, int);
 void memory();
 void writeBack();
-
+void initFETCH();
+void printMemory();
 
 
 int main()
@@ -144,7 +145,7 @@ int main()
 	//Initialize Instruction memory for testing purposes
 	//INSTRUCTION_MEMORY[0] = "0111111110000000";//sgti $7,$6,0
 	//INSTRUCTION_MEMORY[1] = "1110111001001100";//go to ENDLOOP bez $7, 7	
-
+	
 	ifstream inputInstructions;
 	inputInstructions.open("instructions.txt");
 
@@ -155,40 +156,32 @@ int main()
 	}
 	inputInstructions.close();
 	
-	////Let's run the fetch/decode twice to test two instructions
-	//fetch();
-	//decode();
-	//execute();
-	//memory();
-	//writeBack();
-
-	//fetch();
-	//decode();
-	//execute();
-	//memory();
-	//writeBack();
-
 	for(int i = 0; i < numberOfInstructions; i++)
 	{
+		
 		switch(cpuClock)
 		{
 		case 0:
 			fetch();
+			PC = PC + 1;
 			break;
 		case 1:
 			decode();
 			fetch();
+			PC = PC + 1;
 			break;
 		case 2:
 			execute();
 			decode();
 			fetch();
+			PC = PC + 1;
 			break;
 		case 3:
 			memory();
 			execute();
 			decode();
 			fetch();
+			PC = PC + 1;
 			break;
 		default:
 			writeBack();
@@ -196,6 +189,7 @@ int main()
 			execute();
 			decode();
 			fetch();
+			PC = PC + 1;
 			
 			logFile << "REG[0]: " << REG_ARRAY[0] << endl;
 			logFile << "REG[1]: " << REG_ARRAY[1] << endl;
@@ -207,7 +201,10 @@ int main()
 			logFile << "REG[7]: " << REG_ARRAY[7] << endl << endl;
 			break;
 		}
+			
+		printMemory();
 		cpuClock++;
+		system("pause");
 	}
 	
 	//finishes the current instructions' cycles
@@ -215,18 +212,23 @@ int main()
 	memory();
 	execute();
 	decode();
+	printMemory();
+	system("pause");
 
 	writeBack();
 	memory();
 	execute();
+	printMemory();
+	system("pause");
 
 	writeBack();
 	memory();
+	printMemory();
+	system("pause");
 
 	writeBack();
-
-	
-
+	printMemory();
+	logFile.close();
 	system("pause");
 }
 
@@ -236,6 +238,7 @@ int main()
 ******************************************************************************/
 void fetch()
 {
+	initFETCH();
 	//Get the current instruction from memory
 	FETCH_DECODE.instruction = INSTRUCTION_MEMORY[PC];
 	
@@ -313,25 +316,41 @@ void decode()
 	logFile << "OP CODE: " << DECODE_EX.opCode << endl;
 #endif
 	
-	//Call the control unit here
+//Perform Hazard Detection
+//1.If EX_MEM.RT == (DECODE_EX.RS or DECODE_EX.RT) and (EX_MEM.MemRead == 1)
+// 	then set control bits to zero, and decrement PC by 1, IF/ID buffer should not change
+if((EX_MEM.registerRT == DECODE_EX.registerRS) || (EX_MEM.registerRT == DECODE_EX.registerRT))
+{
+	if(EX_MEM.controlBits.memRead == 1)
+	{
+		ControlUnit(0000);
+		PC = PC - 1;
+	}
+	else
+	{
+		//Call the control unit here
+		ControlUnit(DECODE_EX.opCode);
+	}
+}
+else
+{
 	ControlUnit(DECODE_EX.opCode);
-	
-	//Make sure to comment this out later. Only using for testing purposes
-	PC = PC + 1;
+}
 
 	//Add shift left 2 on 11-0i
-	DECODE_EX.jumpValue = strtol(FETCH_DECODE.instruction.substr(11,12).c_str(), NULL, 2);
+	DECODE_EX.jumpValue = strtol(FETCH_DECODE.instruction.substr(4,12).c_str(), NULL, 2);
 
 #ifdef DEBUG
 	logFile << "JUMP VALUE: " << DECODE_EX.jumpValue << endl;
 #endif
 
 	//Store the whole instruction value for the branch value
-	DECODE_EX.branchValue = strtol(FETCH_DECODE.instruction.substr(15,16).c_str(), NULL, 2);
+	DECODE_EX.branchValue = strtol(FETCH_DECODE.instruction.substr(0,16).c_str(), NULL, 2);
 	
 #ifdef DEBUG
 	logFile << "BRANCH VALUE: " << DECODE_EX.branchValue << endl << endl;
 #endif
+
 }
 
 /******************************************************************************
@@ -377,7 +396,7 @@ void ControlUnit(string inputOpCode)
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memToReg = 1;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 1;
 			DECODE_EX.controlBits.regWrite = 1;
@@ -388,7 +407,7 @@ void ControlUnit(string inputOpCode)
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 1;
-			DECODE_EX.controlBits.memToReg = 1;
+			DECODE_EX.controlBits.memToReg = 0;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 0;
 			DECODE_EX.controlBits.regWrite = 1;
@@ -399,7 +418,7 @@ void ControlUnit(string inputOpCode)
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;	//Don't care
+			DECODE_EX.controlBits.memToReg = 1;	//Don't care
 			DECODE_EX.controlBits.memWrite = 1;
 			DECODE_EX.controlBits.regDest = 0;		//Don't care
 			DECODE_EX.controlBits.regWrite = 0;
@@ -410,7 +429,7 @@ void ControlUnit(string inputOpCode)
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memToReg = 1;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 1;
 			DECODE_EX.controlBits.regWrite = 1;
@@ -421,7 +440,7 @@ void ControlUnit(string inputOpCode)
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memToReg = 1;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 0;
 			DECODE_EX.controlBits.regWrite = 1;
@@ -432,7 +451,7 @@ void ControlUnit(string inputOpCode)
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memToReg = 1;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 0;
 			DECODE_EX.controlBits.regWrite = 1;
@@ -446,7 +465,7 @@ i dont know if this alu op is correct. also, attention grabbing
 			DECODE_EX.controlBits.branch = 1;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memToReg = 1;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 0;
 			DECODE_EX.controlBits.regWrite = 0;
@@ -457,7 +476,7 @@ i dont know if this alu op is correct. also, attention grabbing
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memToReg = 1;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 1;
 			DECODE_EX.controlBits.regWrite = 1;
@@ -468,7 +487,7 @@ i dont know if this alu op is correct. also, attention grabbing
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 1;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memToReg = 1;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 0;
 			DECODE_EX.controlBits.regWrite = 0;
@@ -479,7 +498,7 @@ i dont know if this alu op is correct. also, attention grabbing
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memToReg = 1;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 1;
 			DECODE_EX.controlBits.regWrite = 1;
@@ -490,7 +509,7 @@ i dont know if this alu op is correct. also, attention grabbing
 			DECODE_EX.controlBits.branch = 0;
 			DECODE_EX.controlBits.jump = 0;
 			DECODE_EX.controlBits.memRead = 0;
-			DECODE_EX.controlBits.memToReg = 0;
+			DECODE_EX.controlBits.memToReg = 1;
 			DECODE_EX.controlBits.memWrite = 0;
 			DECODE_EX.controlBits.regDest = 1;
 			DECODE_EX.controlBits.regWrite = 1;
@@ -507,19 +526,6 @@ void execute()
 
 	char* pEnd;
 	//Make sure to do the shift left 2
-	
-	//Copy the jump value
-	EX_MEM.jumpValue = DECODE_EX.jumpValue;
-
-	//Copy the function code
-	EX_MEM.functionCode = DECODE_EX.functionCode;
-
-	//Copy the Control bits
-	EX_MEM.controlBits = DECODE_EX.controlBits;
-
-	/*		NEW		*/
-	//Carry over the regout2
-	EX_MEM.regOut2 = DECODE_EX.regOut2;
 
 	//Shift the sign extended value to send through the adder
 	int tempSignExtend = DECODE_EX.signExtendedVal;
@@ -536,7 +542,7 @@ void execute()
 	}
 	else if(EX_MEM.controlBits.regDest == 1)
 	{
-		EX_MEM.destRegister = DECODE_EX.registerRD;
+		EX_MEM.destRegister = DECODE_EX.registerRS;
 	}
 
 	/* Store ALU input number 2 which is either the
@@ -562,6 +568,7 @@ void execute()
 	int tempFuncCode = strtol(EX_MEM.functionCode.c_str(), &pEnd, 2);
 
 	EX_MEM.ALUResult = funcALU(EX_MEM.controlBits.aluOP, tempALU_A, tempALU_B, tempFuncCode); 
+	
 }
 
 /******************************************************************************
@@ -610,6 +617,7 @@ int funcALU (int ALU_OP, int ALU_A, int ALU_B, int ALU_FUNC)
 				break;
 			case 3: //xor
 				ALU_Result = (ALU_A) * (~(ALU_B)) | ((~(ALU_A)) * (ALU_B));
+				break;
 			case 4: //Shift left logical
 				//Must shift ALU_B to the left by three as the
 				//shift amount we care about is stored in bits
@@ -633,9 +641,11 @@ int funcALU (int ALU_OP, int ALU_A, int ALU_B, int ALU_FUNC)
 			case 7: //set greater than
 				if (ALU_A > ALU_B){
 					ALU_Result = 1;
+					ALU_Zero = 1;
 				}
 				else{
 					ALU_Result = 0;
+					ALU_Zero = 0;
 				}
 				break;
 		}
@@ -704,22 +714,122 @@ void writeBack()
 	if(MEM_WB.controlBits.memToReg)
 	{
 		//write the ALUresult to the registers
+		
+		
 		WB_write_data = MEM_WB.ALUResult;
+		REG_ARRAY[MEM_WB.destRegister] = MEM_WB.ALUResult;
 	}
 	else
 	{
 		//write the loaded data to registers
 		WB_write_data = MEM_WB.memReadData;
+		REG_ARRAY[MEM_WB.destRegister] = MEM_WB.memReadData;
 	}
 
 	//Set the register destination
-	WB_destination_register = MEM_WB.destRegister;
+	//WB_destination_register = MEM_WB.destRegister;
 
 	//Set the global wb control bit to write to registers based on if 
 	//the bit is set in the control bits of the mem/wb buffer
 	WB_control_bit = MEM_WB.controlBits.regWrite;
+	
+}
 
-#ifdef DEBUG
-	logFile << "WB data:  " << WB_write_data << endl << endl;
-#endif
+void initFETCH()
+{
+	FETCH_DECODE.ALUResult = 0;
+	FETCH_DECODE.branchValue = 0;
+	FETCH_DECODE.controlBits.aluOP = 0;
+	FETCH_DECODE.controlBits.aluSRC = 0;
+	FETCH_DECODE.controlBits.branch = 0;
+	FETCH_DECODE.controlBits.jump = 0;
+	FETCH_DECODE.controlBits.memRead = 0;
+	FETCH_DECODE.controlBits.memToReg = 0;
+	FETCH_DECODE.controlBits.memWrite = 0;
+	FETCH_DECODE.controlBits.regDest = 0;
+	FETCH_DECODE.controlBits.regWrite = 0;
+	FETCH_DECODE.currentPC = 0;
+	FETCH_DECODE.destRegister = 0;
+	FETCH_DECODE.functionCode = "";
+	FETCH_DECODE.instruction = "";
+	FETCH_DECODE.isZero = 0;
+	FETCH_DECODE.jumpValue = 0;
+	FETCH_DECODE.memReadData = 0;
+	FETCH_DECODE.opCode = "";
+	FETCH_DECODE.registerRD = 0;
+	FETCH_DECODE.registerRS = 0;
+	FETCH_DECODE.registerRT = 0;
+	FETCH_DECODE.regOut1 = 0;
+	FETCH_DECODE.regOut2 = 0;
+	FETCH_DECODE.signExtendedVal = 0;
+}
+
+void printMemory()
+{
+	//Output to the screen
+	cout << "----------------------------------------------------------------------" << endl
+		<< "Clock Cycle: " << FETCH_DECODE.currentPC << endl
+		<<  "----------------------------------------------------------------------" << endl;
+	cout << "DECODE - EXECUTE BUFFER: " << endl;
+	cout << "\tJUMP VALUE: " << DECODE_EX.jumpValue << endl;
+	cout << "\tCURRENT REGISTER RD: " << DECODE_EX.registerRD << endl;
+	cout << "\tCURRENT REGISTER RT: " << DECODE_EX.registerRT << endl;
+	cout << "\tCURRENT REGISTER RS: " << DECODE_EX.registerRS << endl;
+	cout << "\tOP CODE: " << DECODE_EX.opCode << endl;
+	cout << "\tALU OP: " << DECODE_EX.controlBits.aluOP << endl;
+	cout << "EXECUTE - MEMORY BUFFER: " << endl;
+	cout << "\tALU Result: " << EX_MEM.ALUResult << endl;
+	cout << "MEMORY - WRITEBACK BUFFER: " << endl;
+	cout << "\tMemory Accessed: " << MEM_WB.memReadData << endl;
+	cout << "\tWB DATA: " << WB_write_data << endl;
+	
+
+	cout << "REGISTERS: \t\t\tData Memory:" << endl;
+	for(int i = 0; i < 8; i++)
+	{
+		cout << i << ": " << REG_ARRAY[i];
+		if(i < 5)
+		{
+			cout << "\t\t\tDATA_MEMORY[a" << i << "]:\t" << DATA_MEMORY[i] << endl;
+		}
+		else
+		{
+			cout << endl;
+		}
+
+	}
+
+	//Output for the log file
+	logFile << "----------------------------------------------------------------------" << endl
+		<< "Clock Cycle: " << FETCH_DECODE.currentPC << endl
+		<<  "----------------------------------------------------------------------" << endl << endl;
+	logFile << "DECODE - EXECUTE BUFFER: " << endl;
+	logFile << "\tJUMP VALUE: " << DECODE_EX.jumpValue << endl;
+	logFile << "\tCURRENT REGISTER RD: " << DECODE_EX.registerRD << endl;
+	logFile << "\tCURRENT REGISTER RT: " << DECODE_EX.registerRT << endl;
+	logFile << "\tCURRENT REGISTER RS: " << DECODE_EX.registerRS << endl;
+	logFile << "\tOP CODE: " << DECODE_EX.opCode << endl;
+	logFile << "\tALU OP: " << DECODE_EX.controlBits.aluOP << endl;
+	logFile << "EXECUTE - MEMORY BUFFER: " << endl;
+	logFile << "\tALU Result: " << EX_MEM.ALUResult << endl;
+	logFile << "MEMORY - WRITEBACK BUFFER: " << endl;
+	logFile << "\tMemory Accessed: " << MEM_WB.memReadData << endl;
+	logFile << "\tWB DATA: " << WB_write_data << endl;
+	
+
+	logFile << "REGISTERS: \t\t\tData Memory:" << endl;
+	for(int i = 0; i < 8; i++)
+	{
+		logFile << i << ": " << REG_ARRAY[i];
+		if(i < 5)
+		{
+			logFile << "\t\t\tDATA_MEMORY[a" << i << "]:\t" << DATA_MEMORY[i] << endl;
+		}
+		else
+		{
+			logFile << endl;
+		}
+
+	}
+	logFile << endl;
 }
